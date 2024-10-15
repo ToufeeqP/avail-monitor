@@ -1,0 +1,15 @@
+[package]
+name = "substrate-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.75"
+codec = { package = "parity-scale-codec", version = "3.6.1" }
+subxt = { version = "0.35.3" }
+subxt-signer = "0.35.3"
+sp-crypto-hashing = "*"
+sp-core = "*"
+sp-consensus-babe = "*"
+structopt = "0.3.26"
+tokio = { version = "1.34.0", features = ["full"] }
