@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::utils::{api, Opts};
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
@@ -29,7 +29,7 @@ pub async fn traverse(start_block: u32, end_block: u32) -> Result<()> {
         .chain_get_block_hash(Some(start_block.into()))
         .await?
         .ok_or_else(|| anyhow::anyhow!("Block hash not found for start_block: {}", start_block))?;
-    
+
     let mut block = client.blocks().at(block_hash).await?;
 
     // Traverse until end_block is reached

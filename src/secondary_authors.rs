@@ -2,8 +2,8 @@
 
 use crate::utils::{api, Opts};
 use anyhow::Result;
-use codec::Encode;
 use api::runtime_types::{sp_consensus_babe::app::Public, sp_consensus_slots::Slot};
+use codec::Encode;
 use sp_consensus_babe::{BabeAuthorityWeight, Randomness};
 use structopt::StructOpt;
 use subxt::{

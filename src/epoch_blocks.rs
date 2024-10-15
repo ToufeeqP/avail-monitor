@@ -6,7 +6,7 @@ use structopt::StructOpt;
 use subxt::backend::legacy::LegacyRpcMethods;
 use subxt::{backend::rpc::RpcClient, client::OnlineClient, config::PolkadotConfig};
 
-/// Determines number of blocks produced in an epoch for last `n` epochs 
+/// Determines number of blocks produced in an epoch for last `n` epochs
 pub async fn fetch_blocks_in_epochs(n: u32) -> Result<()> {
     let args = Opts::from_args();
     // First, create a raw RPC client:
