@@ -1,3 +1,4 @@
+mod avail_api;
 mod epoch_blocks;
 mod secondary_authors;
 mod traverse_chain;

@@ -3,14 +3,13 @@
 use crate::utils::{
     api,
     api::{session::events::NewSession, staking::events::EraPaid},
-    Opts,
+    AvailConfig, Opts,
 };
 use anyhow::Result;
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
     client::OnlineClient,
-    config::PolkadotConfig,
 };
 
 /// Determines number of blocks produced in an epoch for last `n` epochs
@@ -28,9 +27,9 @@ pub async fn fetch_blocks_in_epochs(n: u32) -> Result<()> {
 }
 
 async fn blocks_in_epoch(rpc_client: RpcClient, n: u32) -> Result<Vec<(u64, u32)>> {
-    let rpc = LegacyRpcMethods::<PolkadotConfig>::new(rpc_client.clone());
+    let rpc = LegacyRpcMethods::<AvailConfig>::new(rpc_client.clone());
     // We can use the same client to drive our full Subxt interface too:
-    let client = OnlineClient::<PolkadotConfig>::from_rpc_client(rpc_client).await?;
+    let client = OnlineClient::<AvailConfig>::from_rpc_client(rpc_client).await?;
 
     // Fetch current epoch start data from the babe pallet
     let mut current_epoch_start = client
@@ -82,7 +81,7 @@ async fn blocks_in_epoch(rpc_client: RpcClient, n: u32) -> Result<Vec<(u64, u32)
 pub async fn monitor_chain() -> Result<()> {
     let args = Opts::from_args();
     let rpc_client = RpcClient::from_url(args.ws.clone()).await?;
-    let client = OnlineClient::<PolkadotConfig>::from_rpc_client(rpc_client.clone()).await?;
+    let client = OnlineClient::<AvailConfig>::from_rpc_client(rpc_client.clone()).await?;
 
     let constant_query = api::constants().staking().sessions_per_era();
     let session_per_era = client.constants().at(&constant_query)?;
@@ -101,8 +100,7 @@ pub async fn monitor_chain() -> Result<()> {
             let epoch_data = blocks_in_epoch(rpc_client.clone(), 1).await?;
             let last_epoch = epoch_data.get(0).expect("hope it exist");
             println!(
-                "Epoch {} ended! Total blocks
-                 produced: {}",
+                "Epoch {} ended! Total blocks produced: {}",
                 last_epoch.0, last_epoch.1
             );
         }

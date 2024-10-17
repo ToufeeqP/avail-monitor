@@ -6,8 +6,12 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.75"
 codec = { package = "parity-scale-codec", version = "3.6.1" }
-subxt = { version = "0.35.3" }
-subxt-signer = "0.35.3"
+derive_more = "0.99.17"
+serde = "1.0.197"
+subxt = { version = "0.34" }
+# Following versions of subxt is needed for latest polkadot chains
+# subxt = { version = "0.35.3" }
+# subxt-signer = "0.35.3"
 sp-crypto-hashing = "*"
 sp-core = "*"
 sp-consensus-babe = "*"
