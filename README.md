@@ -21,7 +21,7 @@ To use this tool, you'll need to have Rust installed on your machine. You can in
 1. Clone this repository:
    ```bash
    git clone https://github.com/ToufeeqP/avail-monitor.git
-   cd substrate_monitoring_utility
+   cd avail-monitor
    ```
 
 2. Build the project:
