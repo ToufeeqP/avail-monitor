@@ -29,6 +29,8 @@ pub enum Command {
         #[structopt(help = "Block number at which epoch started")]
         block_id: u32,
     },
+    /// Monitors chain to determine number of blocks produced in an epoch/era when it ends
+    ChainMonitor,
 }
 
 #[subxt::subxt(runtime_metadata_path = "./artifacts/polkadot_metadata.scale")]
