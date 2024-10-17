@@ -6,6 +6,10 @@ use crate::utils::{
     AvailConfig, Opts,
 };
 use anyhow::Result;
+use log::{error, info};
+use reqwest::Client;
+use serde_json::json;
+use std::env;
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
@@ -78,7 +82,7 @@ async fn blocks_in_epoch(rpc_client: RpcClient, n: u32) -> Result<Vec<(u64, u32)
 
 /// Monitors the chain and prints block counts when an epoch/era ends
 // TODO: handle epoch 0
-pub async fn monitor_chain() -> Result<()> {
+pub async fn monitor_chain(channel_id: Option<String>) -> Result<()> {
     let args = Opts::from_args();
     let rpc_client = RpcClient::from_url(args.ws.clone()).await?;
     let client = OnlineClient::<AvailConfig>::from_rpc_client(rpc_client.clone()).await?;
@@ -95,25 +99,65 @@ pub async fn monitor_chain() -> Result<()> {
         let events = block.events().await?;
         if let Some(new_session) = events.find_first::<NewSession>().ok().flatten() {
             let epoch_index = new_session.session_index;
-            println!("New epoch started: {}", epoch_index);
+            info!("New epoch started: {}", epoch_index);
 
             let epoch_data = blocks_in_epoch(rpc_client.clone(), 1).await?;
-            let last_epoch = epoch_data.get(0).expect("hope it exist");
-            println!(
+            let last_epoch = epoch_data.first().expect("we know it exist");
+            let message = format!(
                 "Epoch {} ended! Total blocks produced: {}",
                 last_epoch.0, last_epoch.1
             );
+            if let Some(ref channel) = channel_id {
+                post_to_slack(&message, channel).await?;
+            }
+            info!("{}", message);
         }
 
         if let Some(era_paid) = events.find_first::<EraPaid>().ok().flatten() {
             let era_index = era_paid.era_index;
             let epoch_data = blocks_in_epoch(rpc_client.clone(), session_per_era).await?;
             let total_blocks = epoch_data.iter().fold(0, |acc, e| acc + e.1);
-            println!(
+            let message = format!(
                 "Era {} ended! Total blocks produced: {}",
                 era_index, total_blocks
             );
+            if let Some(ref channel) = channel_id {
+                post_to_slack(&message, channel).await?;
+            }
+            info!("{}", message);
         }
+    }
+
+    Ok(())
+}
+
+async fn post_to_slack(message: &str, channel_id: &str) -> Result<()> {
+    let slack_token = env::var("SLACK_TOKEN").unwrap_or_else(|_| "MAYBE_DEFAULT".to_string());
+
+    let client = Client::new();
+
+    let payload = json!({
+        "channel": channel_id,
+        "text": message,
+    });
+
+    // Send the POST request to Slack Web API
+    let response = client
+        .post("https://slack.com/api/chat.postMessage")
+        .bearer_auth(slack_token)
+        .json(&payload)
+        .send()
+        .await?;
+
+    let status = response.status();
+    if status.is_success() {
+        info!("Message posted successfully!");
+    } else {
+        let body = response.text().await?;
+        error!(
+            "Failed to post message. Status: {:?}, Body: {}",
+            status, body
+        );
     }
 
     Ok(())

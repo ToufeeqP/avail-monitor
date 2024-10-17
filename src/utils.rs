@@ -31,7 +31,12 @@ pub enum Command {
         block_id: u32,
     },
     /// Monitors chain to determine number of blocks produced in an epoch/era when it ends
-    ChainMonitor,
+    ChainMonitor {
+        /// Optional Slack channel ID. If specified, chain information will be posted to Slack.
+        /// Ensure the SLACK_TOKEN env is set.
+        #[structopt(short, long)]
+        channel_id: Option<String>,
+    },
 }
 
 // #[subxt::subxt(runtime_metadata_path = "./artifacts/polkadot_metadata.scale")]

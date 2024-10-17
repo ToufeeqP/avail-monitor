@@ -24,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::SecondaryAuthors { block_id } => {
             secondary_authors::find_secondary_authors(block_id).await?;
         }
-        Command::ChainMonitor => {
-            epoch_blocks::monitor_chain().await?;
+        Command::ChainMonitor { channel_id } => {
+            epoch_blocks::monitor_chain(channel_id).await?;
         }
     }
 
