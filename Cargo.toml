@@ -1,13 +1,21 @@
 [package]
-name = "substrate-utils"
+name = "avail-monitor"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
 codec = { package = "parity-scale-codec", version = "3.6.1" }
-subxt = { version = "0.35.3" }
-subxt-signer = "0.35.3"
+derive_more = "0.99.17"
+serde = "1.0.197"
+serde_json = "1.0.108"
+subxt = { version = "0.34" }
+env_logger = "0.11.5"
+log = "0.4"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+# Following versions of subxt is needed for latest polkadot chains
+# subxt = { version = "0.35.3" }
+# subxt-signer = "0.35.3"
 sp-crypto-hashing = "*"
 sp-core = "*"
 sp-consensus-babe = "*"

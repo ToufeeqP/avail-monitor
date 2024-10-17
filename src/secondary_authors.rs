@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::utils::{api, Opts};
+use crate::utils::{api, AvailConfig, Opts};
 use anyhow::Result;
 use api::runtime_types::{sp_consensus_babe::app::Public, sp_consensus_slots::Slot};
 use codec::Encode;
@@ -9,9 +9,10 @@ use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
     client::OnlineClient,
-    config::{substrate::U256, PolkadotConfig},
+    config::substrate::U256,
 };
 
+// TODO: fetch it from chain
 pub const EPOCH_DURATION_IN_SLOTS: u64 = 2400;
 
 /// Determines secondary slot authors for all slots in an epoch given a first block number of epoch.
@@ -21,10 +22,10 @@ pub async fn find_secondary_authors(block_id: u32) -> Result<()> {
     let rpc_client = RpcClient::from_url(args.ws.clone()).await?;
 
     // Use this to construct our RPC methods:
-    let rpc = LegacyRpcMethods::<PolkadotConfig>::new(rpc_client.clone());
+    let rpc = LegacyRpcMethods::<AvailConfig>::new(rpc_client.clone());
 
     // We can use the same client to drive our full Subxt interface too:
-    let client = OnlineClient::<PolkadotConfig>::from_rpc_client(rpc_client).await?;
+    let client = OnlineClient::<AvailConfig>::from_rpc_client(rpc_client).await?;
 
     let block_hash = rpc
         .chain_get_block_hash(Some(block_id.into()))

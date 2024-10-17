@@ -1,11 +1,10 @@
 #![allow(dead_code)]
-use crate::utils::{api, Opts};
+use crate::utils::{api, AvailConfig, Opts};
 use anyhow::{bail, Result};
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
     client::OnlineClient,
-    config::PolkadotConfig,
 };
 
 /// Traverse the chain in reverse order, from the start_block to its parent, continuing until end_block is reached.
@@ -19,8 +18,8 @@ pub async fn traverse(start_block: u32, end_block: u32) -> Result<()> {
     let rpc_client = RpcClient::from_url(args.ws.clone()).await?;
 
     // Initialize both RPC and Subxt client once without redundant cloning
-    let rpc = LegacyRpcMethods::<PolkadotConfig>::new(rpc_client.clone());
-    let client = OnlineClient::<PolkadotConfig>::from_rpc_client(rpc_client).await?;
+    let rpc = LegacyRpcMethods::<AvailConfig>::new(rpc_client.clone());
+    let client = OnlineClient::<AvailConfig>::from_rpc_client(rpc_client).await?;
 
     println!("{:<10} | {:<10}", "block #", "slot #");
 
