@@ -9,7 +9,8 @@ use anyhow::Result;
 use log::{error, info};
 use reqwest::Client;
 use serde_json::json;
-use std::env;
+use sp_core::H256;
+use std::{collections::HashSet, env};
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
@@ -125,10 +126,55 @@ pub async fn monitor_chain(channel_id: Option<String>) -> Result<()> {
                 post_to_slack(&message, channel).await?;
             }
             info!("{}", message);
+
+            // Check if there are any changes in the active set has happened
+            let current_validators = fetch_validators(client.clone(), block.hash()).await?;
+            let previous_validators =
+                fetch_validators(client.clone(), block.header().parent_hash).await?;
+
+            let added_validators: HashSet<_> = current_validators
+                .difference(&previous_validators)
+                .cloned()
+                .collect();
+            let removed_validators: HashSet<_> = previous_validators
+                .difference(&current_validators)
+                .cloned()
+                .collect();
+            if !added_validators.is_empty() || !removed_validators.is_empty() {
+                let change_message = format!(
+                    "Era {} validator set changes:\nAdded: {:?}\nRemoved: {:?}",
+                    era_index + 1, added_validators, removed_validators
+                );
+                if let Some(ref channel) = channel_id {
+                    post_to_slack(&change_message, channel).await?;
+                }
+                info!("{}", change_message);
+            } else {
+                let change_message = format!("No validator changes in era {}", era_index + 1);
+                if let Some(ref channel) = channel_id {
+                    post_to_slack(&change_message, channel).await?;
+                }
+                info!("{}", change_message);
+            }
         }
     }
 
     Ok(())
+}
+
+async fn fetch_validators(
+    client: OnlineClient<AvailConfig>,
+    block_hash: H256,
+) -> Result<HashSet<String>> {
+    let validators = client
+        .storage()
+        .at(block_hash)
+        .fetch(&api::storage().session().validators())
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Failed to fetch validators"))?;
+    let validator_hash_set: HashSet<String> =
+        validators.into_iter().map(|a| a.to_string()).collect();
+    Ok(validator_hash_set)
 }
 
 async fn post_to_slack(message: &str, channel_id: &str) -> Result<()> {
