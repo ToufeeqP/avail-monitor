@@ -12,9 +12,6 @@ use subxt::{
     config::substrate::U256,
 };
 
-// TODO: fetch it from chain
-pub const EPOCH_DURATION_IN_SLOTS: u64 = 2400;
-
 /// Determines secondary slot authors for all slots in an epoch given a first block number of epoch.
 pub async fn find_secondary_authors(block_id: u32) -> Result<()> {
     let args = Opts::from_args();
@@ -54,7 +51,6 @@ pub async fn find_secondary_authors(block_id: u32) -> Result<()> {
     println!("Slot: {:?}", slot);
 
     // Fetch the randomness
-
     let randomness: Randomness = client
         .storage()
         .at(block_hash)
@@ -64,8 +60,12 @@ pub async fn find_secondary_authors(block_id: u32) -> Result<()> {
 
     println!("Randomness: {:?}", randomness);
 
+    // Fetch the epoch duration in slots
+    let constant_query = api::constants().babe().epoch_duration();
+    let epoch_duration_in_slots = client.constants().at(&constant_query)?;
+
     // Get secondary slot owners
-    let secondary_authors = get_secondary_slot_owners(slot, &authorities[..], randomness);
+    let secondary_authors = get_secondary_slot_owners(slot, &authorities[..], randomness, epoch_duration_in_slots);
 
     // Using session validators will save lot of state queries
     let validators = client
@@ -96,11 +96,12 @@ fn get_secondary_slot_owners(
     start_slot: Slot,
     authorities: &[(Public, BabeAuthorityWeight)],
     epoch_randomness: Randomness,
+    epoch_duration_in_slots: u64,
 ) -> Vec<(u64, u32)> {
-    let mut authors = Vec::with_capacity(EPOCH_DURATION_IN_SLOTS as usize);
+    let mut authors = Vec::with_capacity(epoch_duration_in_slots as usize);
 
-    // Iterate over each slot from start_slot to start_slot + EPOCH_DURATION_IN_SLOTS
-    for s in start_slot.0..=start_slot.0.saturating_add(EPOCH_DURATION_IN_SLOTS) {
+    // Iterate over each slot from start_slot to start_slot + epoch_duration_in_slots
+    for s in start_slot.0..=start_slot.0.saturating_add(epoch_duration_in_slots) {
         let expected_author = secondary_slot_author(Slot(s), authorities, epoch_randomness);
         authors.push((s, expected_author));
     }
