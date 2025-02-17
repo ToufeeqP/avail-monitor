@@ -17,6 +17,9 @@ use subxt::{
     client::OnlineClient,
 };
 
+const EXPECTED_BLOCKS_PER_EPOCH: u32 = 720;
+const EXPECTED_BLOCKS_PER_ERA: u32 = 4320;
+
 /// Determines number of blocks produced in an epoch for last `n` epochs
 pub async fn fetch_blocks_in_epochs(n: u32) -> Result<()> {
     let args = Opts::from_args();
@@ -104,28 +107,32 @@ pub async fn monitor_chain(channel_id: Option<String>) -> Result<()> {
 
             let epoch_data = blocks_in_epoch(rpc_client.clone(), 1).await?;
             let last_epoch = epoch_data.first().expect("we know it exist");
-            let message = format!(
-                "Epoch {} ended! Total blocks produced: {}",
-                last_epoch.0, last_epoch.1
-            );
-            if let Some(ref channel) = channel_id {
-                post_to_slack(&message, channel).await?;
+            if last_epoch.1 < EXPECTED_BLOCKS_PER_EPOCH {
+                let message = format!(
+                    "Epoch {} ended! Total blocks produced: {}",
+                    last_epoch.0, last_epoch.1
+                );
+                if let Some(ref channel) = channel_id {
+                    post_to_slack(&message, channel).await?;
+                }
+                info!("{}", message);
             }
-            info!("{}", message);
         }
 
         if let Some(era_paid) = events.find_first::<EraPaid>().ok().flatten() {
             let era_index = era_paid.era_index;
             let epoch_data = blocks_in_epoch(rpc_client.clone(), session_per_era).await?;
             let total_blocks = epoch_data.iter().fold(0, |acc, e| acc + e.1);
-            let message = format!(
-                "Era {} ended! Total blocks produced: {}",
-                era_index, total_blocks
-            );
-            if let Some(ref channel) = channel_id {
-                post_to_slack(&message, channel).await?;
+            if total_blocks < EXPECTED_BLOCKS_PER_ERA {
+                let message = format!(
+                    "Era {} ended! Total blocks produced: {}",
+                    era_index, total_blocks
+                );
+                if let Some(ref channel) = channel_id {
+                    post_to_slack(&message, channel).await?;
+                }
+                info!("{}", message);
             }
-            info!("{}", message);
 
             // Check if there are any changes in the active set has happened
             let current_validators = fetch_validators(client.clone(), block.hash()).await?;
@@ -143,14 +150,10 @@ pub async fn monitor_chain(channel_id: Option<String>) -> Result<()> {
             if !added_validators.is_empty() || !removed_validators.is_empty() {
                 let change_message = format!(
                     "Era {} validator set changes:\nAdded: {:?}\nRemoved: {:?}",
-                    era_index + 1, added_validators, removed_validators
+                    era_index + 1,
+                    added_validators,
+                    removed_validators
                 );
-                if let Some(ref channel) = channel_id {
-                    post_to_slack(&change_message, channel).await?;
-                }
-                info!("{}", change_message);
-            } else {
-                let change_message = format!("No validator changes in era {}", era_index + 1);
                 if let Some(ref channel) = channel_id {
                     post_to_slack(&change_message, channel).await?;
                 }
