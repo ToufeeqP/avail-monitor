@@ -8,6 +8,7 @@ A command-line utility for monitoring Avail, a Substrate-based blockchain, offer
 - [Usage](#usage)
 - [Commands](#commands)
 - [Examples](#examples)
+- [Health Check](#health-check)
 
 ### Features
 - Traverse the blockchain in reverse order and record storage values.
@@ -46,8 +47,7 @@ The tool supports the following commands:
 - `secondary-authors`: Determine secondary slot authors for an epoch based on the block number at which the epoch started.
 - `chain-monitor`: Monitors chain to determine number of blocks produced in an epoch/era when it ends.
 
-
-### Example
+### Examples
 
 1. Traverse the chain
 
@@ -78,3 +78,15 @@ Optionally, you can send updates to Slack by providing a CHANNEL-ID and setting 
 ```bash
 SLACK_TOKEN="your-slack-token" ./target/release/avail-monitor chain-monitor --channel-id <CHANNEL-ID>
 ```
+
+### Health Check
+
+The tool includes a health check endpoint that can be used to verify if it is running. By default, the health check server runs on port `3030`. You can specify a different port using the `--health-port` option.
+
+Example:
+
+```bash
+./target/release/avail-monitor --health-port 3031 chain-monitor
+```
+
+You can check the health status by making a request to `http://localhost:3031/health`. The endpoint will return `OK` if the tool is running.
