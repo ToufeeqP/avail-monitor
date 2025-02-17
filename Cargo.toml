@@ -21,3 +21,4 @@ sp-core = "*"
 sp-consensus-babe = "*"
 structopt = "0.3.26"
 tokio = { version = "1.34.0", features = ["full"] }
+warp = "0.3.7"

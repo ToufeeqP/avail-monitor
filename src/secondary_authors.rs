@@ -65,7 +65,8 @@ pub async fn find_secondary_authors(block_id: u32) -> Result<()> {
     let epoch_duration_in_slots = client.constants().at(&constant_query)?;
 
     // Get secondary slot owners
-    let secondary_authors = get_secondary_slot_owners(slot, &authorities[..], randomness, epoch_duration_in_slots);
+    let secondary_authors =
+        get_secondary_slot_owners(slot, &authorities[..], randomness, epoch_duration_in_slots);
 
     // Using session validators will save lot of state queries
     let validators = client

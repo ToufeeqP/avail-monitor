@@ -6,6 +6,9 @@ pub struct Opts {
     #[structopt(long, default_value = "ws://127.0.0.1:9944")]
     pub ws: String,
 
+    #[structopt(long, default_value = "3030")]
+    pub health_port: u16,
+
     #[structopt(subcommand)]
     pub command: Command,
 }
