@@ -2,15 +2,19 @@
 
 use crate::utils::{
     api,
-    api::{session::events::NewSession, staking::events::EraPaid},
+    api::{
+        runtime_types::pallet_identity::types::Data, session::events::NewSession,
+        staking::events::EraPaid,
+    },
     AvailConfig, Opts,
 };
 use anyhow::Result;
 use log::{error, info};
+use paste::paste;
 use reqwest::Client;
 use serde_json::json;
 use sp_core::H256;
-use std::{collections::HashSet, env};
+use std::{collections::HashSet, env, str::FromStr};
 use structopt::StructOpt;
 use subxt::{
     backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
@@ -19,6 +23,19 @@ use subxt::{
 
 const EXPECTED_BLOCKS_PER_EPOCH: u32 = 720;
 const EXPECTED_BLOCKS_PER_ERA: u32 = 4320;
+
+use std::{collections::HashMap, fs};
+
+fn load_local_map() -> HashMap<String, String> {
+    if let Ok(content) = fs::read_to_string("offchain_identities.json") {
+        // { "stash_account": "Validator Name", ... }
+        if let Ok(map) = serde_json::from_str::<HashMap<String, String>>(&content) {
+            return map;
+        }
+    }
+
+    HashMap::new()
+}
 
 /// Determines number of blocks produced in an epoch for last `n` epochs
 pub async fn fetch_blocks_in_epochs(n: u32) -> Result<()> {
@@ -148,16 +165,35 @@ pub async fn monitor_chain(channel_id: Option<String>) -> Result<()> {
                 .cloned()
                 .collect();
             if !added_validators.is_empty() || !removed_validators.is_empty() {
+                let added: Vec<String> = futures::future::join_all(
+                    added_validators
+                        .iter()
+                        .map(|acc| resolve_identity(&client, block.hash(), acc)),
+                )
+                .await
+                .into_iter()
+                .filter_map(Result::ok)
+                .collect();
+
+                let removed: Vec<String> = futures::future::join_all(
+                    removed_validators
+                        .iter()
+                        .map(|acc| resolve_identity(&client, block.hash(), acc)),
+                )
+                .await
+                .into_iter()
+                .filter_map(Result::ok)
+                .collect();
                 let change_message = format!(
                     "Era {} validator set changes:\nAdded: {:?}\nRemoved: {:?}",
                     era_index + 1,
-                    added_validators,
-                    removed_validators
+                    added,
+                    removed
                 );
                 if let Some(ref channel) = channel_id {
                     post_to_slack(&change_message, channel).await?;
                 }
-                info!("{}", change_message);
+                println!("{}", change_message);
             }
         }
     }
@@ -210,4 +246,54 @@ async fn post_to_slack(message: &str, channel_id: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+macro_rules! match_raw_variants {
+    ($data:expr, $($n:literal),*) => {
+        paste! {
+            match $data {
+                $(
+                    Data::[<Raw $n>](arr) => Some(String::from_utf8_lossy(arr).to_string()),
+                )*
+                _ => None,
+            }
+        }
+    };
+}
+
+fn extract_raw_data(data: &Data) -> Option<String> {
+    match_raw_variants!(
+        data, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+        24, 25, 26, 27, 28, 29, 30, 31, 32
+    )
+}
+
+/// Resolves the identity of an account using on-chain identity pallet or offchain file
+async fn resolve_identity(
+    client: &OnlineClient<AvailConfig>,
+    block_hash: H256,
+    account: &str,
+) -> Result<String> {
+    let account_id = subxt::utils::AccountId32::from_str(account)?;
+
+    // Try on-chain identity
+    let identity_opt = client
+        .storage()
+        .at(block_hash)
+        .fetch(&api::storage().identity().identity_of(account_id.clone()))
+        .await?;
+
+    if let Some((registration, _)) = identity_opt {
+        if let Some(display) = extract_raw_data(&registration.info.display) {
+            return Ok(format!("{} [{}]", display, account));
+        }
+    }
+
+    // Fallback to offchain identity file
+    let local_map = load_local_map();
+    if let Some(local_name) = local_map.get(account) {
+        return Ok(format!("{} [{}]", local_name, account));
+    }
+
+    Ok(format!("NO_IDENT [{}]", account))
 }
